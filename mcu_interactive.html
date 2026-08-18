@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCU — Interactive Universe Map</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080812;--surface:#10101e;--card:#14142a;--border:#1e1e38;
+  --text:#e8e8f2;--muted:#5a5a8a;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif}
+header{
+  position:fixed;top:0;left:0;right:0;z-index:200;height:54px;
+  display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:rgba(8,8,18,.97);border-bottom:1px solid var(--border);
+}
+.logo{
+  font-size:.9rem;font-weight:800;letter-spacing:.12em;
+  background:linear-gradient(120deg,#e63637,#ff9090);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  white-space:nowrap;flex-shrink:0;
+}
+.vtoggle{display:flex;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:3px;gap:2px;flex-shrink:0}
+.vbtn{display:flex;align-items:center;gap:5px;padding:4px 11px;
+  border:none;border-radius:5px;background:transparent;color:var(--muted);
+  cursor:pointer;font-size:.76rem;font-weight:600;transition:all .18s;white-space:nowrap}
+.vbtn.active{background:var(--border);color:var(--text)}
+.sw{position:relative;flex:1;max-width:200px}
+.sw input{width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;padding:4px 9px 4px 26px;color:var(--text);font-size:.76rem;outline:none}
+.sw input:focus{border-color:#4444aa}
+.sw::before{content:'⌕';position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:.88rem;pointer-events:none}
+.leg{display:flex;gap:5px;margin-left:auto;align-items:center;flex-wrap:nowrap}
+.leg-btn{
+  display:flex;align-items:center;gap:5px;
+  font-size:.67rem;font-family:inherit;
+  padding:3px 10px 3px 7px;border-radius:20px;
+  border:1.5px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.04);
+  color:var(--muted);cursor:pointer;
+  transition:background .18s,color .18s,border-color .18s,box-shadow .18s;
+  white-space:nowrap;outline:none;
+}
+.leg-btn::before{
+  content:'';width:7px;height:7px;border-radius:50%;
+  background:var(--sc);flex-shrink:0;
+  transition:box-shadow .18s;
+}
+.leg-btn:hover{color:var(--text);border-color:rgba(255,255,255,0.22);}
+.leg-btn.active{
+  color:var(--text);
+  border-color:var(--sc);
+  background:color-mix(in srgb,var(--sc) 18%,transparent);
+  box-shadow:0 0 12px -3px var(--sc);
+}
+.leg-btn.active::before{box-shadow:0 0 7px 1px var(--sc);}
+main{padding-top:54px;height:100vh}
+#gv{width:100%;height:calc(100vh - 54px);position:relative}
+canvas{display:block}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(8,8,18,.85);border:1px solid var(--border);border-radius:20px;
+  padding:4px 13px;font-size:.68rem;color:var(--muted);pointer-events:none;white-space:nowrap}
+#rbtn{position:fixed;top:64px;right:14px;z-index:300;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;padding:6px 13px;
+  font-size:.74rem;color:var(--muted);cursor:pointer;transition:all .18s}
+#rbtn:hover{border-color:#5555bb;color:var(--text)}
+#np{position:absolute;top:10px;left:10px;z-index:100;
+  background:rgba(10,10,22,.97);border:1px solid #2a2a55;border-radius:11px;
+  padding:12px 32px 12px 14px;max-width:230px;display:none}
+#np .nt{font-size:.88rem;font-weight:700;margin-bottom:6px}
+#np .nm{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+#np .nc{font-size:.7rem;color:var(--muted);line-height:1.6}
+#np .nc b{color:var(--text)}
+#npc{position:absolute;top:7px;right:9px;background:none;border:none;
+  color:var(--muted);cursor:pointer;font-size:.82rem;padding:2px 4px}
+#npc:hover{color:var(--text)}
+#tip{position:fixed;background:rgba(10,10,22,.97);border:1px solid #2a2a55;
+  border-radius:9px;padding:9px 12px;pointer-events:none;z-index:300;
+  max-width:210px;display:none}
+#tt{font-size:.85rem;font-weight:700;margin-bottom:4px}
+#tm{display:flex;flex-wrap:wrap;gap:4px}
+.badge{font-size:.64rem;padding:1px 6px;border-radius:20px;white-space:nowrap}
+.by{background:rgba(255,255,255,.08);color:var(--muted)}
+.bp{background:rgba(70,70,170,.3);color:#9999dd}
+.bt{background:rgba(40,40,60,.8);color:var(--muted)}
+#tv{height:calc(100vh - 54px);overflow-y:auto;padding:18px 20px;display:none}
+#tv::-webkit-scrollbar{width:4px}
+#tv::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.sg{margin-bottom:30px}
+.sg-hd{display:flex;align-items:center;gap:9px;margin-bottom:11px;
+  padding-bottom:9px;border-bottom:1px solid var(--border)}
+.sg-bar{width:3px;height:18px;border-radius:2px;flex-shrink:0}
+.sg-nm{font-size:.95rem;font-weight:700}
+.sg-ct{font-size:.68rem;color:var(--muted);background:var(--surface);
+  border:1px solid var(--border);border-radius:20px;padding:1px 7px}
+.ph-lb{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+  margin:10px 0 6px;display:flex;align-items:center;gap:7px}
+.ph-lb::after{content:'';flex:1;height:1px;background:var(--border)}
+.tl-toolbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0 9px;margin-bottom:4px;
+  background:var(--bg);border-bottom:1px solid var(--border);
+}
+.tl-toolbar-lbl{font-size:.7rem;color:var(--muted);white-space:nowrap;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.sm-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+.sm-btn{display:flex;align-items:center;gap:5px;padding:5px 13px;
+  border:none;border-radius:5px;background:transparent;color:var(--muted);
+  cursor:pointer;font-size:.76rem;font-weight:600;transition:all .18s;white-space:nowrap}
+.sm-btn.active{background:var(--border);color:var(--text)}
+.sm-btn svg{width:12px;height:12px;flex-shrink:0}
+.sm-note{font-size:.68rem;color:var(--muted);font-style:italic;margin-left:4px}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;
+  row-gap:28px;padding:6px 8px;}
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:8px 10px;
+  position:relative;overflow:hidden;
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1),
+             box-shadow .2s ease,
+             border-color .2s ease,
+             background .2s ease;
+  transform-origin:center center;
+  cursor:default;
+}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sc);
+  transition:width .2s ease;}
+.card:hover{
+  transform:scale(1.5);
+  box-shadow:0 16px 48px rgba(0,0,0,.85),0 0 0 2px var(--sc);
+  border-color:var(--sc);
+  background:#1e1e38;
+  z-index:20;
+}
+.card:hover::before{width:5px;}
+.ct{font-size:.78rem;font-weight:600;line-height:1.3;margin-bottom:3px}
+.cm{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cy{font-size:.66rem;color:var(--muted)}
+.ctp{font-size:.6rem;color:var(--muted);background:rgba(255,255,255,.05);border-radius:3px;padding:1px 4px}
+.crel{display:inline-block;margin-top:4px;font-size:.62rem;color:#f0a070;
+  background:rgba(240,160,112,.1);border-radius:3px;padding:1px 5px}
+.cbdg{font-size:.6rem;font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⬡ MCU Universe</div>
+  <div class="vtoggle">
+    <button class="vbtn active" id="btn-g" onclick="switchView('graph')">
+      <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="4" cy="10" r="2"/><circle cx="16" cy="4" r="2"/><circle cx="16" cy="16" r="2"/>
+        <line x1="5.8" y1="9.1" x2="14.2" y2="5.2"/><line x1="5.8" y1="10.9" x2="14.2" y2="14.8"/>
+      </svg>
+      Grafo
+    </button>
+    <button class="vbtn" id="btn-t" onclick="switchView('timeline')">
+      <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="2" y="3" width="16" height="3.5" rx="1"/><rect x="2" y="9" width="16" height="3.5" rx="1"/>
+        <rect x="2" y="15" width="16" height="3.5" rx="1"/>
+      </svg>
+      Timeline
+    </button>
+  </div>
+  <div class="sw">
+    <input type="text" id="srch" placeholder="Cerca titolo..." oninput="doSearch(this.value)">
+  </div>
+  <div class="leg">
+    <button class="leg-btn" data-saga="infinity"   style="--sc:#4fc3f7" onclick="toggleSagaFilter('infinity')">Infinity</button>
+    <button class="leg-btn" data-saga="multiverse" style="--sc:#ff8a65" onclick="toggleSagaFilter('multiverse')">Multiverse</button>
+    <button class="leg-btn" data-saga="defenders"  style="--sc:#ef5350" onclick="toggleSagaFilter('defenders')">Defenders</button>
+    <button class="leg-btn" data-saga="sony"       style="--sc:#ec407a" onclick="toggleSagaFilter('sony')">Sony</button>
+    <button class="leg-btn" data-saga="xmen"       style="--sc:#ffd54f" onclick="toggleSagaFilter('xmen')">X-Men</button>
+  </div>
+</header>
+<main>
+  <div id="gv">
+    <canvas id="gc"></canvas>
+    <div class="hint">Hover → highlight connessioni · Clic → dettagli + zoom · Doppio clic → adatta · Scroll → zoom</div>
+    <button id="rbtn" onclick="fitAll()">⟳ Adatta</button>
+    <div id="np">
+      <button id="npc" onclick="closePanel()">✕</button>
+      <div class="nt" id="np-t"></div>
+      <div class="nm" id="np-m"></div>
+      <div class="nc" id="np-c"></div>
+    </div>
+  </div>
+  <div id="tv">
+    <div class="tl-toolbar">
+      <span class="tl-toolbar-lbl">Sort by</span>
+      <div class="sm-toggle">
+        <button class="sm-btn active" id="sm-rel" onclick="setSortMode('release')">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="16" height="3" rx="1"/><rect x="2" y="9" width="16" height="3" rx="1"/><rect x="2" y="15" width="10" height="3" rx="1"/>
+          </svg>
+          Release Date
+        </button>
+        <button class="sm-btn" id="sm-sto" onclick="setSortMode('story')">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="10" cy="10" r="7"/><polyline points="10,6 10,10 13,12"/>
+          </svg>
+          Story Timeline
+        </button>
+      </div>
+      <span class="sm-note" id="sm-note">grouped by saga & phase</span>
+    </div>
+  </div>
+</main>
+<div id="tip"><div id="tt"></div><div id="tm"></div></div>
+
+<script>
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+const SAGAS={
+  infinity:  {name:"Infinity Saga",            color:"#4fc3f7"},
+  multiverse:{name:"Multiverse Saga",           color:"#ff8a65"},
+  defenders: {name:"Defenders Saga",            color:"#ef5350"},
+  sony:      {name:"Sony Spider-Man Universe",  color:"#ec407a"},
+  xmen:      {name:"X-MEN Universe",            color:"#ffd54f"},
+};
+const NODES=[
+  // INFINITY Phase 1
+  {id:"im1", label:"Iron Man",                                 year:2008,phase:1,saga:"infinity", type:"movie"},
+  {id:"hulk",label:"The Incredible Hulk",                      year:2008,phase:1,saga:"infinity", type:"movie"},
+  {id:"im2", label:"Iron Man 2",                               year:2010,phase:1,saga:"infinity", type:"movie"},
+  {id:"thor1",label:"Thor",                                    year:2011,phase:1,saga:"infinity", type:"movie"},
+  {id:"cap1",label:"Captain America: First Avenger",           year:2011,phase:1,saga:"infinity", type:"movie"},
+  {id:"av1", label:"The Avengers",                             year:2012,phase:1,saga:"infinity", type:"movie"},
+  // Phase 2
+  {id:"im3", label:"Iron Man 3",                               year:2013,phase:2,saga:"infinity", type:"movie"},
+  {id:"thor2",label:"Thor: The Dark World",                    year:2013,phase:2,saga:"infinity", type:"movie"},
+  {id:"cap2",label:"Captain America: Winter Soldier",          year:2014,phase:2,saga:"infinity", type:"movie"},
+  {id:"gotg1",label:"Guardians of the Galaxy",                 year:2014,phase:2,saga:"infinity", type:"movie"},
+  {id:"aou", label:"Avengers: Age of Ultron",                  year:2015,phase:2,saga:"infinity", type:"movie"},
+  {id:"am1", label:"Ant-Man",                                  year:2015,phase:2,saga:"infinity", type:"movie"},
+  {id:"cart",label:"Agent Carter",                             year:2015,phase:2,saga:"infinity", type:"show"},
+  // Phase 3
+  {id:"cw",  label:"Captain America: Civil War",               year:2016,phase:3,saga:"infinity", type:"movie"},
+  {id:"ds1", label:"Doctor Strange",                           year:2016,phase:3,saga:"infinity", type:"movie"},
+  {id:"gotg2",label:"Guardians of the Galaxy Vol. 2",          year:2017,phase:3,saga:"infinity", type:"movie"},
+  {id:"sm1", label:"Spider-Man: Homecoming",                   year:2017,phase:3,saga:"infinity", type:"movie"},
+  {id:"ragn",label:"Thor: Ragnarok",                           year:2017,phase:3,saga:"infinity", type:"movie"},
+  {id:"bp1", label:"Black Panther",                            year:2018,phase:3,saga:"infinity", type:"movie"},
+  {id:"iw",  label:"Avengers: Infinity War",                   year:2018,phase:3,saga:"infinity", type:"movie"},
+  {id:"am2", label:"Ant-Man and the Wasp",                     year:2018,phase:3,saga:"infinity", type:"movie"},
+  {id:"cm1", label:"Captain Marvel",                           year:2019,phase:3,saga:"infinity", type:"movie"},
+  {id:"end", label:"Avengers: Endgame",                        year:2019,phase:3,saga:"infinity", type:"movie"},
+  {id:"ffh", label:"Spider-Man: Far From Home",                year:2019,phase:3,saga:"infinity", type:"movie"},
+  // MULTIVERSE Phase 4
+  {id:"wv",  label:"WandaVision",                              year:2021,phase:4,saga:"multiverse",type:"show"},
+  {id:"fatws",label:"Falcon & the Winter Soldier",             year:2021,phase:4,saga:"multiverse",type:"show"},
+  {id:"lok1",label:"Loki S1",                                  year:2021,phase:4,saga:"multiverse",type:"show"},
+  {id:"bw",  label:"Black Widow",                              year:2021,phase:4,saga:"multiverse",type:"movie"},
+  {id:"wi1", label:"What If...? S1",                           year:2021,phase:4,saga:"multiverse",type:"show"},
+  {id:"hawk",label:"Hawkeye",                                  year:2021,phase:4,saga:"multiverse",type:"show"},
+  {id:"eter",label:"Eternals",                                 year:2021,phase:4,saga:"multiverse",type:"movie"},
+  {id:"nwh", label:"Spider-Man: No Way Home",                  year:2021,phase:4,saga:"multiverse",type:"movie"},
+  {id:"shch",label:"Shang-Chi and the Ten Rings",              year:2021,phase:4,saga:"multiverse",type:"movie"},
+  {id:"moon",label:"Moon Knight",                              year:2022,phase:4,saga:"multiverse",type:"show"},
+  {id:"ds2", label:"Doctor Strange: Multiverse of Madness",    year:2022,phase:4,saga:"multiverse",type:"movie"},
+  {id:"msm", label:"Ms. Marvel",                               year:2022,phase:4,saga:"multiverse",type:"show"},
+  {id:"thor4",label:"Thor: Love and Thunder",                  year:2022,phase:4,saga:"multiverse",type:"movie"},
+  {id:"shh", label:"She-Hulk: Attorney at Law",                year:2022,phase:4,saga:"multiverse",type:"show"},
+  {id:"bp2", label:"Black Panther: Wakanda Forever",           year:2022,phase:4,saga:"multiverse",type:"movie"},
+  // Phase 5
+  {id:"am3", label:"Ant-Man: Quantumania",                     year:2023,phase:5,saga:"multiverse",type:"movie"},
+  {id:"gotg3",label:"Guardians of the Galaxy Vol. 3",          year:2023,phase:5,saga:"multiverse",type:"movie"},
+  {id:"sinv",label:"Secret Invasion",                          year:2023,phase:5,saga:"multiverse",type:"show"},
+  {id:"lok2",label:"Loki S2",                                  year:2023,phase:5,saga:"multiverse",type:"show"},
+  {id:"marv",label:"The Marvels",                              year:2023,phase:5,saga:"multiverse",type:"movie"},
+  {id:"wi2", label:"What If...? S2",                           year:2023,phase:5,saga:"multiverse",type:"show"},
+  {id:"echo",label:"Echo",                                     year:2024,phase:5,saga:"multiverse",type:"show"},
+  {id:"agat",label:"Agatha All Along",                         year:2024,phase:5,saga:"multiverse",type:"show"},
+  {id:"dpwv",label:"Deadpool & Wolverine",                     year:2024,phase:5,saga:"multiverse",type:"movie"},
+  {id:"wi3", label:"What If...? S3",                           year:2024,phase:5,saga:"multiverse",type:"show"},
+  // Phase 6
+  {id:"cap4",label:"Captain America: Brave New World",         year:2025,phase:6,saga:"multiverse",type:"movie"},
+  {id:"tblt",label:"Thunderbolts*",                            year:2025,phase:6,saga:"multiverse",type:"movie"},
+  {id:"iroh",label:"Ironheart",                                year:2025,phase:6,saga:"multiverse",type:"show"},
+  {id:"ff4", label:"Fantastic Four: First Steps",              year:2025,phase:6,saga:"multiverse",type:"movie"},
+  {id:"dba1",label:"Daredevil: Born Again S1",                 year:2025,phase:6,saga:"multiverse",type:"show"},
+  {id:"vq",  label:"Vision Quest",                             year:2026,phase:6,saga:"multiverse",type:"show"},
+  {id:"dba2",label:"Daredevil: Born Again S2",                 year:2026,phase:6,saga:"multiverse",type:"show"},
+  {id:"spbnd",label:"Spider-Man: Brand New Day",               year:2026,phase:6,saga:"multiverse",type:"movie"},
+  {id:"avdm",label:"Avengers: Doomsday",                       year:2026,phase:6,saga:"multiverse",type:"movie"},
+  {id:"avsw",label:"Avengers: Secret Wars",                    year:2027,phase:6,saga:"multiverse",type:"movie"},
+  // DEFENDERS
+  {id:"dd1", label:"Daredevil S1",        year:2015,phase:null,saga:"defenders",type:"show"},
+  {id:"jj1", label:"Jessica Jones S1",    year:2015,phase:null,saga:"defenders",type:"show"},
+  {id:"dd2", label:"Daredevil S2",        year:2016,phase:null,saga:"defenders",type:"show"},
+  {id:"lc1", label:"Luke Cage S1",        year:2016,phase:null,saga:"defenders",type:"show"},
+  {id:"if1", label:"Iron Fist S1",        year:2017,phase:null,saga:"defenders",type:"show"},
+  {id:"defs",label:"The Defenders",       year:2017,phase:null,saga:"defenders",type:"show"},
+  {id:"pun1",label:"The Punisher S1",     year:2017,phase:null,saga:"defenders",type:"show"},
+  {id:"jj2", label:"Jessica Jones S2",    year:2018,phase:null,saga:"defenders",type:"show"},
+  {id:"lc2", label:"Luke Cage S2",        year:2018,phase:null,saga:"defenders",type:"show"},
+  {id:"if2", label:"Iron Fist S2",        year:2018,phase:null,saga:"defenders",type:"show"},
+  {id:"dd3", label:"Daredevil S3",        year:2018,phase:null,saga:"defenders",type:"show"},
+  {id:"pun2",label:"The Punisher S2",     year:2019,phase:null,saga:"defenders",type:"show"},
+  {id:"jj3", label:"Jessica Jones S3",    year:2019,phase:null,saga:"defenders",type:"show"},
+  {id:"pwj", label:"Punisher: War Journal",year:2026,phase:null,saga:"defenders",type:"show"},
+  // SONY
+  {id:"sp02",label:"Spider-Man (2002)",          year:2002,phase:null,saga:"sony",type:"movie"},
+  {id:"sp04",label:"Spider-Man 2",               year:2004,phase:null,saga:"sony",type:"movie"},
+  {id:"sp07",label:"Spider-Man 3",               year:2007,phase:null,saga:"sony",type:"movie"},
+  {id:"tas1",label:"The Amazing Spider-Man",     year:2012,phase:null,saga:"sony",type:"movie"},
+  {id:"tas2",label:"The Amazing Spider-Man 2",   year:2014,phase:null,saga:"sony",type:"movie"},
+  {id:"ven1",label:"Venom",                      year:2018,phase:null,saga:"sony",type:"movie"},
+  {id:"ven2",label:"Venom: Let There Be Carnage",year:2021,phase:null,saga:"sony",type:"movie"},
+  {id:"morb",label:"Morbius",                    year:2022,phase:null,saga:"sony",type:"movie"},
+  {id:"madw",label:"Madam Web",                  year:2024,phase:null,saga:"sony",type:"movie"},
+  {id:"ven3",label:"Venom: The Last Dance",      year:2024,phase:null,saga:"sony",type:"movie"},
+  {id:"krav",label:"Kraven the Hunter",          year:2024,phase:null,saga:"sony",type:"movie"},
+  // X-MEN
+  {id:"bl1", label:"Blade",                                year:1998,phase:null,saga:"xmen",type:"movie"},
+  {id:"bl2", label:"Blade II",                             year:2002,phase:null,saga:"xmen",type:"movie"},
+  {id:"bl3", label:"Blade: Trinity",                       year:2004,phase:null,saga:"xmen",type:"movie"},
+  {id:"xm1", label:"X-Men",                                year:2000,phase:null,saga:"xmen",type:"movie"},
+  {id:"x2m", label:"X2: X-Men United",                     year:2003,phase:null,saga:"xmen",type:"movie"},
+  {id:"x3m", label:"X-Men: The Last Stand",                year:2006,phase:null,saga:"xmen",type:"movie"},
+  {id:"elk", label:"Elektra",                              year:2005,phase:null,saga:"xmen",type:"movie"},
+  {id:"xf1", label:"Fantastic Four (2005)",                year:2005,phase:null,saga:"xmen",type:"movie"},
+  {id:"xf2", label:"FF: Rise of Silver Surfer",            year:2007,phase:null,saga:"xmen",type:"movie"},
+  {id:"xor", label:"X-Men Origins: Wolverine",             year:2009,phase:null,saga:"xmen",type:"movie"},
+  {id:"xfc", label:"X-Men: First Class",                   year:2011,phase:null,saga:"xmen",type:"movie"},
+  {id:"wlv2",label:"The Wolverine",                        year:2013,phase:null,saga:"xmen",type:"movie"},
+  {id:"dofp",label:"X-Men: Days of Future Past",           year:2014,phase:null,saga:"xmen",type:"movie"},
+  {id:"dp1", label:"Deadpool",                             year:2016,phase:null,saga:"xmen",type:"movie"},
+  {id:"xapo",label:"X-Men: Apocalypse",                    year:2016,phase:null,saga:"xmen",type:"movie"},
+  {id:"logn",label:"Logan",                                year:2017,phase:null,saga:"xmen",type:"movie"},
+  {id:"dp2", label:"Deadpool 2",                           year:2018,phase:null,saga:"xmen",type:"movie"},
+  {id:"xdph",label:"X-Men: Dark Phoenix",                  year:2019,phase:null,saga:"xmen",type:"movie"},
+  {id:"newm",label:"The New Mutants",                      year:2020,phase:null,saga:"xmen",type:"movie"},
+];
+const LINK_DATA=[
+  // P1 chain
+  {s:"im1",t:"hulk"},{s:"hulk",t:"im2"},{s:"im2",t:"thor1"},{s:"thor1",t:"cap1"},
+  {s:"im2",t:"av1"},{s:"hulk",t:"av1"},{s:"thor1",t:"av1"},{s:"cap1",t:"av1"},
+  // P2
+  {s:"av1",t:"im3"},{s:"av1",t:"thor2"},{s:"av1",t:"cap2"},{s:"av1",t:"gotg1"},
+  {s:"im3",t:"aou"},{s:"thor2",t:"aou"},{s:"cap2",t:"aou"},{s:"gotg1",t:"aou"},
+  {s:"aou",t:"am1"},{s:"cap1",t:"cart"},
+  // P3
+  {s:"aou",t:"cw"},{s:"am1",t:"cw"},{s:"cap2",t:"cw"},
+  {s:"cw",t:"sm1"},{s:"cw",t:"bp1"},{s:"cw",t:"ds1"},{s:"cw",t:"ragn"},
+  {s:"gotg1",t:"gotg2"},{s:"ds1",t:"ragn"},
+  {s:"ragn",t:"iw"},{s:"bp1",t:"iw"},{s:"sm1",t:"iw"},{s:"gotg2",t:"iw"},{s:"aou",t:"iw"},
+  {s:"iw",t:"am2"},{s:"iw",t:"cm1"},{s:"am2",t:"end"},{s:"cm1",t:"end"},{s:"iw",t:"end"},
+  {s:"end",t:"ffh"},
+  // P4
+  {s:"end",t:"wv"},{s:"end",t:"fatws"},{s:"end",t:"lok1"},{s:"end",t:"bw"},
+  {s:"end",t:"hawk"},{s:"lok1",t:"wi1"},{s:"ffh",t:"nwh"},
+  {s:"nwh",t:"ds2"},{s:"wv",t:"ds2"},{s:"lok1",t:"ds2"},{s:"ds1",t:"ds2"},
+  {s:"hawk",t:"echo"},
+  // P5
+  {s:"ds2",t:"marv"},{s:"msm",t:"marv"},{s:"cm1",t:"marv"},
+  {s:"am2",t:"am3"},{s:"lok1",t:"lok2"},{s:"lok2",t:"dpwv"},
+  {s:"gotg2",t:"gotg3"},{s:"wv",t:"agat"},{s:"echo",t:"dba1"},
+  // P6
+  {s:"fatws",t:"cap4"},{s:"bw",t:"tblt"},{s:"shh",t:"iroh"},{s:"wv",t:"vq"},
+  {s:"cap4",t:"avdm"},{s:"tblt",t:"avdm"},{s:"ff4",t:"avdm"},{s:"lok2",t:"avdm"},
+  {s:"nwh",t:"spbnd"},{s:"dba1",t:"dba2"},{s:"avdm",t:"avsw"},
+  // Defenders
+  {s:"dd1",t:"jj1"},{s:"jj1",t:"dd2"},{s:"dd2",t:"lc1"},{s:"lc1",t:"if1"},
+  {s:"if1",t:"defs"},{s:"dd2",t:"defs"},{s:"lc1",t:"defs"},
+  {s:"defs",t:"pun1"},{s:"pun1",t:"jj2"},{s:"jj2",t:"lc2"},
+  {s:"lc2",t:"if2"},{s:"if2",t:"dd3"},{s:"dd3",t:"pun2"},{s:"pun2",t:"jj3"},
+  {s:"dd3",t:"dba1",cross:true},{s:"pun2",t:"pwj"},
+  // Sony
+  {s:"sp02",t:"sp04"},{s:"sp04",t:"sp07"},
+  {s:"tas1",t:"tas2"},{s:"ven1",t:"ven2"},{s:"ven2",t:"ven3"},
+  {s:"nwh",t:"ven2",cross:true},
+  // X-Men
+  {s:"bl1",t:"bl2"},{s:"bl2",t:"bl3"},
+  {s:"xm1",t:"x2m"},{s:"x2m",t:"x3m"},
+  {s:"xf1",t:"xf2"},{s:"xor",t:"wlv2"},
+  {s:"xfc",t:"dofp"},{s:"x3m",t:"dofp"},
+  {s:"dofp",t:"dp1"},{s:"dofp",t:"xapo"},{s:"wlv2",t:"logn"},
+  {s:"dp1",t:"dp2"},{s:"dp2",t:"dpwv",cross:true},{s:"logn",t:"dpwv",cross:true},
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const canvas=document.getElementById('gc');
+const ctx=canvas.getContext('2d');
+let DPR=1,CW=0,CH=0;
+
+let nodes=[],links=[],adj={};
+let T={tx:0,ty:0,scale:1};
+let aFrom=null,aTo=null,aT0=0,aDur=500;
+
+// Per-node animated state
+let nState={};  // id → {a:alpha, ta:targetAlpha, s:scale, ts:targetScale}
+let lState={};  // index → {a:alpha, ta:targetAlpha}
+
+let hovNode=null,selNode=null;
+let simAlpha=1,simDone=false;
+let isPan=false,panSX=0,panSY=0,panTX=0,panTY=0,panMoved=false;
+let lastMX=0,lastMY=0;
+let searchQ='',tlBuilt=false,curView='graph',activeSaga=null;
+
+// cluster centres (world coords)
+const CLUST={
+  infinity:  {x:-620,y:-200},
+  multiverse:{x: 860,y:-200},
+  defenders: {x:1920,y:  80},
+  sony:      {x:-640,y:1060},
+  xmen:      {x:1700,y:-1200},
+};
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+const nc=n=>SAGAS[n.saga]?.color||'#888';
+function nr(n){const d=(adj[n.id]||new Set()).size;return(n.type==='movie'?9:7)+d*1.1;}
+function eio(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// ─────────────────────────────────────────────
+// SIMULATION
+// ─────────────────────────────────────────────
+function initSim(){
+  nodes=NODES.map(n=>{
+    const c=CLUST[n.saga]||{x:0,y:0};
+    const a=Math.random()*Math.PI*2,r=Math.random()*480+120;
+    return{...n,x:c.x+Math.cos(a)*r,y:c.y+Math.sin(a)*r,vx:0,vy:0};
+  });
+  adj={};nodes.forEach(n=>adj[n.id]=new Set());
+  links=LINK_DATA.map(l=>{
+    const src=nodes.find(n=>n.id===l.s);
+    const tgt=nodes.find(n=>n.id===l.t);
+    if(src&&tgt){adj[src.id].add(tgt.id);adj[tgt.id].add(src.id);}
+    return{...l,src,tgt};
+  }).filter(l=>l.src&&l.tgt);
+  // init animated states
+  nState={};nodes.forEach(n=>{nState[n.id]={a:0.88,ta:0.88,s:1,ts:1};});
+  lState={};links.forEach((_,i)=>{lState[i]={a:0.26,ta:0.26};});
+}
+
+function simTick(){
+  if(simAlpha<0.001){if(!simDone){simDone=true;fitAll();}return;}
+  simAlpha*=0.974;
+  const a=simAlpha,N=nodes.length;
+  // repulsion — boosted strength & range
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+    const ni=nodes[i],nj=nodes[j];
+    let dx=nj.x-ni.x,dy=nj.y-ni.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<0.1){dx=Math.random()-.5;dy=Math.random()-.5;d=.5;}
+    if(d>900)continue;
+    const f=2400*a/(d*d),fx=dx/d*f,fy=dy/d*f;
+    ni.vx-=fx;ni.vy-=fy;nj.vx+=fx;nj.vy+=fy;
+  }
+  // springs — slightly longer rest lengths to create breathing room
+  links.forEach(l=>{
+    const{src:s,tgt:t,cross}=l;
+    const dx=t.x-s.x,dy=t.y-s.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+    const rest=cross?520:(s.saga!==t.saga?360:210);
+    const f=(d-rest)/d*0.13*a;
+    s.vx+=dx*f;s.vy+=dy*f;t.vx-=dx*f;t.vy-=dy*f;
+  });
+  // cluster gravity — very gentle
+  nodes.forEach(n=>{
+    const c=CLUST[n.saga];if(!c)return;
+    n.vx+=(c.x-n.x)*0.012*a;n.vy+=(c.y-n.y)*0.012*a;
+  });
+  // collision — node radius + label clearance (asymmetric: labels hang below)
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+    const ni=nodes[i],nj=nodes[j];
+    let dx=nj.x-ni.x,dy=nj.y-ni.y,d=Math.sqrt(dx*dx+dy*dy)||.1;
+    // base circle collision
+    const md=nr(ni)+nr(nj)+62;
+    if(d<md){const p=(md-d)/d*0.85;ni.vx-=dx*p;ni.vy-=dy*p;nj.vx+=dx*p;nj.vy+=dy*p;}
+    // extra vertical push: label of ni extends ~40px below, label of nj extends ~40px below
+    // push apart vertically if centres are within label-zone distance
+    const labelH=40;
+    if(Math.abs(dx)<nr(ni)+nr(nj)+50){
+      // ni's label zone: [ni.y, ni.y+labelH]; nj's label zone: [nj.y, nj.y+labelH]
+      // push nj down if it's below ni and too close
+      if(dy>0&&dy<nr(ni)+labelH+nr(nj)){
+        const gap=nr(ni)+labelH+nr(nj)-dy;
+        ni.vy-=gap*0.18*a;nj.vy+=gap*0.18*a;
+      } else if(dy<0&&-dy<nr(nj)+labelH+nr(ni)){
+        const gap=nr(nj)+labelH+nr(ni)+dy;
+        ni.vy+=gap*0.18*a;nj.vy-=gap*0.18*a;
+      }
+    }
+  }
+  // integrate
+  nodes.forEach(n=>{n.vx*=0.62;n.vy*=0.62;n.x+=n.vx;n.y+=n.vy;});
+}
+
+// ─────────────────────────────────────────────
+// CAMERA ANIMATION
+// ─────────────────────────────────────────────
+function animTo(to,dur){aFrom={...T};aTo={...to};aT0=performance.now();aDur=dur||500;}
+function updCamAnim(now){
+  if(!aTo)return;
+  const t=Math.min((now-aT0)/aDur,1),e=eio(t);
+  T.tx=lerp(aFrom.tx,aTo.tx,e);T.ty=lerp(aFrom.ty,aTo.ty,e);
+  T.scale=lerp(aFrom.scale,aTo.scale,e);
+  if(t>=1)aTo=null;
+}
+function fitAll(){
+  if(!nodes.length)return;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  nodes.forEach(n=>{const r=nr(n)+40;
+    minX=Math.min(minX,n.x-r);minY=Math.min(minY,n.y-r);
+    maxX=Math.max(maxX,n.x+r);maxY=Math.max(maxY,n.y+r);
+  });
+  const gW=maxX-minX,gH=maxY-minY;
+  const sc=Math.min(CW/gW,CH/gH)*0.88;
+  animTo({tx:CW/2-(minX+gW/2)*sc,ty:CH/2-(minY+gH/2)*sc,scale:sc},900);
+}
+function zoomToNode(n){
+  const sc=Math.max(T.scale,2.2);
+  animTo({tx:CW/2-n.x*sc,ty:CH/2-n.y*sc,scale:sc},520);
+}
+
+function fitSaga(saga){
+  const sub=nodes.filter(n=>n.saga===saga);
+  if(!sub.length)return;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  sub.forEach(n=>{const r=nr(n)+50;
+    minX=Math.min(minX,n.x-r);minY=Math.min(minY,n.y-r);
+    maxX=Math.max(maxX,n.x+r);maxY=Math.max(maxY,n.y+r);
+  });
+  const gW=maxX-minX,gH=maxY-minY;
+  const sc=Math.min(CW/gW,CH/gH)*0.85;
+  animTo({tx:CW/2-(minX+gW/2)*sc,ty:CH/2-(minY+gH/2)*sc,scale:sc},800);
+}
+
+function toggleSagaFilter(saga){
+  activeSaga=activeSaga===saga?null:saga;
+  // update button states
+  document.querySelectorAll('.leg-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.saga===activeSaga);
+  });
+  // apply highlight
+  setHighlight(hovNode?.id||null,selNode?.id||null);
+  // camera: fit subgraph or restore full view
+  if(activeSaga){
+    if(curView==='graph') fitSaga(activeSaga);
+    // timeline: dim non-matching cards
+    applyCardSagaFilter();
+  } else {
+    if(curView==='graph') fitAll();
+    applyCardSagaFilter();
+  }
+}
+
+function applyCardSagaFilter(){
+  document.querySelectorAll('.card').forEach(c=>{
+    const match=!activeSaga||c.dataset.saga===activeSaga;
+    c.style.opacity=match?'':'0.12';
+  });
+}
+
+// ─────────────────────────────────────────────
+// HIGHLIGHT STATE MACHINE
+// ─────────────────────────────────────────────
+const LERP_SPEED=0.13; // per-frame lerp factor (higher = snappier)
+
+function setHighlight(hid,sid){
+  nodes.forEach(n=>{
+    const ns=nState[n.id];if(!ns)return;
+    let ta,ts;
+    const inSaga=!activeSaga||n.saga===activeSaga;
+    if(searchQ){
+      ta=n.label.toLowerCase().includes(searchQ)?0.95:0.06;
+      ts=1;
+    } else if(hid){
+      const conn=n.id===hid||(adj[hid]||new Set()).has(n.id);
+      ta=conn?0.95:(inSaga?0.07:0.03);
+      ts=n.id===hid?1.38:1;
+    } else if(sid){
+      const conn=n.id===sid||(adj[sid]||new Set()).has(n.id);
+      ta=conn?0.95:(inSaga?0.10:0.03);
+      ts=n.id===sid?1.28:1;
+    } else if(activeSaga){
+      ta=inSaga?0.92:0.06;ts=1;
+    } else {
+      ta=0.88;ts=1;
+    }
+    ns.ta=ta;ns.ts=ts;
+  });
+  links.forEach((l,i)=>{
+    const ls=lState[i];if(!ls)return;
+    let ta;
+    const inSagaLink=!activeSaga||(l.src.saga===activeSaga&&l.tgt.saga===activeSaga);
+    if(searchQ){ta=0.04;}
+    else if(hid){ta=(l.src.id===hid||l.tgt.id===hid)?0.90:0.04;}
+    else if(sid){ta=(l.src.id===sid||l.tgt.id===sid)?0.82:0.05;}
+    else if(activeSaga){ta=inSagaLink?0.38:0.03;}
+    else{ta=0.26;}
+    ls.ta=ta;
+  });
+}
+
+function tickHighlight(){
+  const sp=LERP_SPEED;
+  nodes.forEach(n=>{
+    const ns=nState[n.id];if(!ns)return;
+    ns.a=lerp(ns.a,ns.ta,sp);
+    ns.s=lerp(ns.s,ns.ts,sp);
+  });
+  links.forEach((_,i)=>{
+    const ls=lState[i];if(!ls)return;
+    ls.a=lerp(ls.a,ls.ta,sp);
+  });
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function render(now){
+  updCamAnim(now);
+  tickHighlight();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.scale(DPR,DPR);
+  ctx.translate(T.tx,T.ty);ctx.scale(T.scale,T.scale);
+  links.forEach((l,i)=>drawLink(l,i));
+  nodes.forEach(n=>drawNode(n));
+  ctx.restore();
+}
+
+function drawLink(l,i){
+  const{src:s,tgt:t,cross}=l;
+  const al=(lState[i]||{a:0.26}).a;
+  if(al<0.01)return;
+  const isHi=al>0.5;
+  const color=cross?'#888':nc(s);
+  const dx=t.x-s.x,dy=t.y-s.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+  const curv=0.13;
+  const mx=(s.x+t.x)/2,my=(s.y+t.y)/2;
+  const cpx=mx-(dy/dist)*dist*curv,cpy=my+(dx/dist)*dist*curv;
+  const ang=Math.atan2(t.y-cpy,t.x-cpx);
+  const r=nr(t)*(nState[t.id]?.s||1);
+  const ex=t.x-Math.cos(ang)*r,ey=t.y-Math.sin(ang)*r;
+  const lw=(isHi?2.2:1.1)/T.scale;
+
+  ctx.save();
+  ctx.globalAlpha=al;
+  ctx.strokeStyle=color;ctx.lineWidth=lw;
+  if(cross)ctx.setLineDash([5/T.scale,3/T.scale]);
+  ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.quadraticCurveTo(cpx,cpy,ex,ey);ctx.stroke();
+  ctx.setLineDash([]);
+  // arrowhead
+  const aLen=(isHi?9:7)/T.scale;
+  ctx.fillStyle=color;
+  ctx.save();ctx.translate(ex,ey);ctx.rotate(ang);
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-aLen*1.4,aLen*0.5);ctx.lineTo(-aLen*1.4,-aLen*0.5);
+  ctx.closePath();ctx.fill();ctx.restore();
+  ctx.restore();
+}
+
+function drawNode(n){
+  const ns=nState[n.id]||{a:0.88,s:1};
+  const al=ns.a,sc=ns.s;
+  if(al<0.01)return;
+  const baseR=nr(n),r=baseR*sc,color=nc(n);
+  const isSel=selNode?.id===n.id;
+  const isHi=al>0.5;
+
+  ctx.save();
+  ctx.globalAlpha=al;
+
+  // glow for hovered/selected
+  if(isHi){
+    ctx.save();
+    ctx.shadowColor=color;
+    ctx.shadowBlur=(isSel?24:sc>1.1?16:0)/T.scale*5;
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=1.6/T.scale;ctx.stroke();
+
+  // label — always show for hovered/selected, otherwise scale-dependent
+  if(al>0.15&&(isHi||isSel||T.scale>0.5)){
+    const fs=Math.max(7,8*Math.min(sc,1.15));
+    const lh=fs+2;
+    ctx.font=`${fs}px 'Segoe UI',system-ui,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.strokeStyle='rgba(5,5,13,.92)';ctx.lineWidth=3/T.scale;
+    ctx.fillStyle=isHi?'#fff':'#d8d8ee';
+    const lines=wrapLabel(n.label,ctx,54);
+    lines.forEach((line,i)=>{
+      const ty=n.y+r+3+i*lh;
+      ctx.strokeText(line,n.x,ty);
+      ctx.fillText(line,n.x,ty);
+    });
+  }
+  ctx.restore();
+}
+
+// wrap text into max 2 lines fitting maxWidth (canvas units)
+function wrapLabel(text, c, maxW){
+  const words=text.split(' ');
+  const lines=[];
+  let cur='';
+  for(const w of words){
+    const test=cur?cur+' '+w:w;
+    if(c.measureText(test).width>maxW&&cur){
+      lines.push(cur);
+      cur=w;
+      if(lines.length===1) break; // max 2 lines
+    } else { cur=test; }
+  }
+  if(cur){
+    // if we broke early, append remaining words to second line (truncated)
+    if(lines.length===1){
+      const rest=words.slice(words.indexOf(cur.split(' ')[0])).join(' ');
+      const trunc=rest.length>18?rest.slice(0,16)+'…':rest;
+      lines.push(trunc);
+    } else { lines.push(cur); }
+  }
+  return lines.slice(0,2);
+}
+
+// ─────────────────────────────────────────────
+// HIT TEST
+// ─────────────────────────────────────────────
+function s2w(sx,sy){return{x:(sx-T.tx)/T.scale,y:(sy-T.ty)/T.scale};}
+function nodeAt(sx,sy){
+  const{x:wx,y:wy}=s2w(sx,sy);
+  for(let i=nodes.length-1;i>=0;i--){
+    const n=nodes[i],r=nr(n)+3;
+    if((wx-n.x)**2+(wy-n.y)**2<=r*r)return n;
+  }return null;
+}
+function mpos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+
+// ─────────────────────────────────────────────
+// EVENTS
+// ─────────────────────────────────────────────
+
+// --- mouse move: only hover highlight + tooltip, NO camera zoom ---
+canvas.addEventListener('mousemove',e=>{
+  lastMX=e.clientX;lastMY=e.clientY;
+  const{x:mx,y:my}=mpos(e);
+
+  if(isPan){
+    panMoved=true;aTo=null;
+    T.tx=panTX+(mx-panSX);T.ty=panTY+(my-panSY);
+    return;
+  }
+
+  const n=nodeAt(mx,my);
+  canvas.style.cursor=n?'pointer':'grab';
+  const newId=n?.id||null,oldId=hovNode?.id||null;
+  if(newId===oldId)return; // no change
+
+  hovNode=n||null;
+  setHighlight(hovNode?.id||null, selNode?.id||null);
+
+  if(n){showTip(n,e);}
+  else{hideTip();}
+});
+
+canvas.addEventListener('mouseleave',()=>{
+  hovNode=null;hideTip();isPan=false;
+  setHighlight(null, selNode?.id||null);
+  canvas.style.cursor='grab';
+});
+
+canvas.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  const{x,y}=mpos(e);
+  isPan=true;panMoved=false;
+  panSX=x;panSY=y;panTX=T.tx;panTY=T.ty;
+  canvas.style.cursor='grabbing';
+});
+
+canvas.addEventListener('mouseup',e=>{
+  if(!isPan)return;isPan=false;
+  if(!panMoved){
+    const{x,y}=mpos(e);
+    const n=nodeAt(x,y);
+    if(n){openPanel(n);}
+    else{closePanel();}
+  }
+  canvas.style.cursor=hovNode?'pointer':'grab';
+});
+
+// scroll: smooth zoom toward cursor, never disturb camera animation
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const{x:mx,y:my}=mpos(e);
+  // normalise delta across trackpad / mouse wheel
+  let delta=e.deltaY;
+  if(e.deltaMode===1)delta*=30; // lines→px
+  if(e.deltaMode===2)delta*=300;// pages→px
+  const f=Math.pow(0.999,delta); // smooth exponential
+  const ns=Math.max(0.04,Math.min(16,T.scale*f));
+  const ratio=ns/T.scale;
+  T.tx=mx-(mx-T.tx)*ratio;
+  T.ty=my-(my-T.ty)*ratio;
+  T.scale=ns;
+  aTo=null; // cancel any in-flight camera animation
+},{passive:false});
+
+canvas.addEventListener('dblclick',e=>{
+  const{x,y}=mpos(e);
+  const n=nodeAt(x,y);
+  if(n){zoomToNode(n);}else{fitAll();}
+});
+
+// touch
+let lastPinch=0,pinching=false;
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(e.touches.length===1){
+    const t=e.touches[0],r=canvas.getBoundingClientRect();
+    isPan=true;panMoved=false;pinching=false;
+    panSX=t.clientX-r.left;panSY=t.clientY-r.top;panTX=T.tx;panTY=T.ty;
+  } else if(e.touches.length===2){
+    isPan=false;pinching=true;
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    lastPinch=Math.sqrt(dx*dx+dy*dy);
+  }
+},{passive:false});
+
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  if(e.touches.length===1&&isPan&&!pinching){
+    panMoved=true;aTo=null;
+    T.tx=panTX+(e.touches[0].clientX-r.left-panSX);
+    T.ty=panTY+(e.touches[0].clientY-r.top-panSY);
+  } else if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left;
+    const cy=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top;
+    const ns=Math.max(0.04,Math.min(16,T.scale*(dist/lastPinch)));
+    const ratio=ns/T.scale;
+    T.tx=cx-(cx-T.tx)*ratio;T.ty=cy-(cy-T.ty)*ratio;T.scale=ns;
+    lastPinch=dist;aTo=null;
+  }
+},{passive:false});
+
+canvas.addEventListener('touchend',e=>{
+  if(e.touches.length===0){isPan=false;pinching=false;}
+  if(e.changedTouches.length===1&&!e.touches.length&&!panMoved&&!pinching){
+    const t=e.changedTouches[0],r=canvas.getBoundingClientRect();
+    const n=nodeAt(t.clientX-r.left,t.clientY-r.top);
+    if(n){openPanel(n);}else{closePanel();}
+  }
+},{passive:false});
+
+// ─────────────────────────────────────────────
+// TOOLTIP
+// ─────────────────────────────────────────────
+const tip=document.getElementById('tip');
+function showTip(n,e){
+  const color=nc(n);
+  document.getElementById('tt').textContent=n.label;
+  document.getElementById('tt').style.color=color;
+  document.getElementById('tm').innerHTML=
+    `<span class="badge by">${n.year}</span>`+
+    (n.phase?`<span class="badge bp">Phase ${n.phase}</span>`:'')+
+    `<span class="badge bt">${n.type==='show'?'📺':'🎬'} ${n.type}</span>`+
+    `<span class="badge" style="color:${color}">${SAGAS[n.saga]?.name}</span>`;
+  tip.style.display='block';moveTip(e);
+}
+function moveTip(e){
+  tip.style.left=Math.min(e.clientX+14,window.innerWidth-230)+'px';
+  tip.style.top=Math.max(e.clientY-12,10)+'px';
+}
+function hideTip(){tip.style.display='none';}
+
+// ─────────────────────────────────────────────
+// PANEL
+// ─────────────────────────────────────────────
+function openPanel(n){
+  selNode=n;
+  setHighlight(hovNode?.id||null, n.id);
+  zoomToNode(n);
+  const color=nc(n);
+  document.getElementById('np-t').textContent=n.label;
+  document.getElementById('np-t').style.color=color;
+  const cids=[...(adj[n.id]||new Set())];
+  const clbls=cids.map(id=>NODES.find(x=>x.id===id)?.label||id);
+  document.getElementById('np-m').innerHTML=
+    `<span class="badge by">${n.year}</span>`+
+    (n.phase?`<span class="badge bp">Phase ${n.phase}</span>`:'')+
+    `<span class="badge bt">${n.type==='show'?'📺 Serie':'🎬 Film'}</span>`+
+    `<span class="badge" style="background:${color}22;color:${color}">${SAGAS[n.saga]?.name}</span>`;
+  document.getElementById('np-c').innerHTML=clbls.length
+    ?`<b>Connessioni (${clbls.length}):</b><br>${clbls.join(', ')}`
+    :'Nessuna connessione diretta';
+  document.getElementById('np').style.display='block';
+}
+function closePanel(){
+  selNode=null;
+  setHighlight(hovNode?.id||null, null);
+  document.getElementById('np').style.display='none';
+}
+
+// ─────────────────────────────────────────────
+// SEARCH
+// ─────────────────────────────────────────────
+function doSearch(q){
+  searchQ=q.trim().toLowerCase();
+  setHighlight(null,null); // search overrides hover/sel in setHighlight
+  document.querySelectorAll('.card').forEach(c=>{
+    const labelMatch=!searchQ||c.dataset.label.toLowerCase().includes(searchQ);
+    const sagaMatch=!activeSaga||c.dataset.saga===activeSaga;
+    const m=labelMatch&&sagaMatch;
+    c.style.opacity=m?'':'0.12';
+    if(m&&searchQ)c.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+
+// ─────────────────────────────────────────────
+// TIMELINE
+// ─────────────────────────────────────────────
+// Story-year (in-universe) for each node — differs from release year for key titles
+const STORY_YEAR={
+  // Infinity Saga — big shifts
+  cap1:1943, cart:1946,
+  cm1:1995,
+  im1:2010, hulk:2011, im2:2011, thor1:2011,
+  av1:2012,
+  im3:2013, thor2:2013,
+  cap2:2014, gotg1:2014, gotg2:2014,
+  aou:2015, am1:2015,
+  cw:2016, ds1:2016, sm1:2016,
+  ragn:2017, bp1:2017,
+  iw:2018, am2:2018,
+  end:2023, ffh:2024,
+  // Multiverse Saga
+  bw:2016,   // set right after Civil War
+  wv:2023, fatws:2024, lok1:2012, shch:2024, wi1:2023,
+  hawk:2024, eter:2021, nwh:2024, moon:2025,
+  ds2:2025, msm:2025, thor4:2025, shh:2025, bp2:2025,
+  am3:2026, gotg3:2025, sinv:2026, lok2:2025, marv:2026,
+  wi2:2024, echo:2024, agat:2026, dpwv:2024, wi3:2025,
+  cap4:2025, tblt:2025, iroh:2026, ff4:2026, dba1:2025,
+  vq:2026, dba2:2026, spbnd:2026, avdm:2026, avsw:2027,
+  // Defenders
+  dd1:2015, jj1:2015, dd2:2016, lc1:2016, if1:2017,
+  defs:2017, pun1:2017, jj2:2018, lc2:2018, if2:2018,
+  dd3:2018, pun2:2019, jj3:2019, pwj:2026,
+  // Sony — same as release (separate universe)
+  sp02:2002, sp04:2004, sp07:2007, tas1:2012, tas2:2014,
+  ven1:2018, ven2:2021, morb:2022, madw:2024, ven3:2024, krav:2024,
+  // X-Men — internal chronology
+  bl1:1998, xm1:2000, bl2:2002, sp02:2002, x2m:2003,
+  bl3:2004, elk:2005, xf1:2005, x3m:2006, xf2:2007,
+  xor:2009, xfc:1962, wlv2:2013, dofp:2023,
+  dp1:2016, xapo:2016, logn:2029, dp2:2018, xdph:2018, newm:2019,
+};
+function storyYear(n){ return STORY_YEAR[n.id]||n.year; }
+
+let sortMode='release'; // 'release' | 'story'
+
+function buildTL(){
+  renderTL();
+  tlBuilt=true;
+}
+
+function renderTL(){
+  // preserve the sticky toolbar, replace only content below it
+  const tv=document.getElementById('tv');
+  const toolbar=document.querySelector('#tv .tl-toolbar');
+  tv.innerHTML='';
+  if(toolbar)tv.appendChild(toolbar);
+
+  const isStory=sortMode==='story';
+  let html='';
+
+  if(isStory){
+    const all=NODES.slice().sort((a,b)=>storyYear(a)-storyYear(b)||(a.label<b.label?-1:1));
+    const grps={};
+    all.forEach(n=>{const k=storyYear(n);(grps[k]=grps[k]||[]).push(n);});
+    const years=Object.keys(grps).map(Number).sort((a,b)=>a-b);
+    html+=`<div class="sg"><div class="sg-hd">
+      <div class="sg-nm">In-Universe Chronological Order</div>
+      <div class="sg-ct">${all.length} titoli · ${years.length} anni</div>
+    </div>`;
+    years.forEach(y=>{
+      html+=`<div class="ph-lb">${y}</div><div class="cards">`;
+      grps[y].forEach(n=>{
+        const saga=SAGAS[n.saga];
+        const ic=n.type==='show'?'📺':n.type==='special'?'🎃':'🎬';
+        const diff=storyYear(n)!==n.year
+          ?`<span class="crel">🎬 Released ${n.year}</span>`:'';
+        html+=`<div class="card" style="--sc:${saga.color}" data-label="${n.label}" data-saga="${n.saga}">
+          <div class="ct">${n.label}</div>
+          <div class="cm">
+            <span class="ctp">${ic} ${n.type}</span>
+            <span class="cbdg" style="color:${saga.color}">${saga.name.replace(' Saga','').replace(' Universe','')}</span>
+          </div>${diff}
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  } else {
+    ['infinity','multiverse','defenders','sony','xmen'].forEach(sk=>{
+      const saga=SAGAS[sk];
+      const sn=NODES.filter(n=>n.saga===sk).sort((a,b)=>a.year-b.year);
+      const grps={};
+      sn.forEach(n=>{const k=n.phase?`Phase ${n.phase}`:`${n.year}`;(grps[k]=grps[k]||[]).push(n);});
+      const keys=Object.keys(grps).sort((a,b)=>parseInt(a.replace(/\D/g,''))-parseInt(b.replace(/\D/g,'')));
+      html+=`<div class="sg"><div class="sg-hd">
+        <div class="sg-bar" style="background:${saga.color}"></div>
+        <div class="sg-nm">${saga.name}</div>
+        <div class="sg-ct">${sn.length} titoli</div>
+      </div>`;
+      keys.forEach(k=>{
+        html+=`<div class="ph-lb">${k}</div><div class="cards">`;
+        sn.filter(n=>(n.phase?`Phase ${n.phase}`:`${n.year}`)===k).forEach(n=>{
+          const ic=n.type==='show'?'📺':n.type==='special'?'🎃':'🎬';
+          const sy=storyYear(n);
+          const diff=sy!==n.year?`<span class="crel">Story: ${sy}</span>`:'';
+          html+=`<div class="card" style="--sc:${saga.color}" data-label="${n.label}" data-saga="${n.saga}">
+            <div class="ct">${n.label}</div>
+            <div class="cm"><span class="cy">${n.year}</span><span class="ctp">${ic} ${n.type}</span></div>
+            ${diff}
+          </div>`;
+        });
+        html+=`</div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+
+  const wrap=document.createElement('div');
+  wrap.innerHTML=html;
+  while(wrap.firstChild)tv.appendChild(wrap.firstChild);
+  // re-apply any active saga filter to freshly built cards
+  applyCardSagaFilter();
+}
+
+function setSortMode(m){
+  if(m===sortMode)return;
+  sortMode=m;
+  document.getElementById('sm-rel').classList.toggle('active',m==='release');
+  document.getElementById('sm-sto').classList.toggle('active',m==='story');
+  document.getElementById('sm-note').textContent=
+    m==='story'?'all universes merged · in-universe chronology':'grouped by saga & phase';
+  renderTL();
+  const q=document.getElementById('srch').value;
+  if(q)doSearch(q);
+}
+
+// ─────────────────────────────────────────────
+// VIEW SWITCH
+// ─────────────────────────────────────────────
+function switchView(v){
+  if(v===curView)return;curView=v;
+  document.getElementById('gv').style.display=v==='graph'?'block':'none';
+  document.getElementById('tv').style.display=v==='timeline'?'block':'none';
+  document.getElementById('btn-g').classList.toggle('active',v==='graph');
+  document.getElementById('btn-t').classList.toggle('active',v==='timeline');
+  document.getElementById('srch').value='';searchQ='';
+  // reset card opacity from search; saga filter reapplied below
+  document.querySelectorAll('.card').forEach(c=>c.style.opacity='');
+  if(v==='timeline'){
+    if(!tlBuilt)buildTL();else applyCardSagaFilter();
+  } else {
+    // back to graph: re-fit to active saga or all
+    if(activeSaga)fitSaga(activeSaga);else fitAll();
+    setHighlight(null,null);
+  }
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+function initCanvas(){
+  DPR=window.devicePixelRatio||1;
+  const el=document.getElementById('gv');
+  CW=el.clientWidth;CH=el.clientHeight;
+  canvas.width=CW*DPR;canvas.height=CH*DPR;
+  canvas.style.width=CW+'px';canvas.style.height=CH+'px';
+}
+
+function loop(now){simTick();render(now);requestAnimationFrame(loop);}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  initCanvas();
+  T={tx:CW*0.41,ty:CH*0.52,scale:0.82};
+  initSim();
+  requestAnimationFrame(loop);
+});
+window.addEventListener('resize',()=>{initCanvas();});
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"f0f03d0605bf45f1a3b17cf7d5e6861f"}' crossorigin="anonymous"></script>
+</body>
+</html>
